@@ -6,6 +6,7 @@ import 'models/dossier_model.dart';
 import 'models/medicament_model.dart';
 import 'models/sante_maternelle_model.dart';
 import 'models/prevention_model.dart';
+import 'pages/maladies_chroniques_page.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/home/home_screen.dart';
@@ -14,7 +15,6 @@ import 'pages/ia_symptomes_page.dart';
 import 'pages/rappel_medicaments_page.dart';
 import 'pages/carte_structures_page.dart';
 import 'pages/sante_maternelle_page.dart';
-import 'pages/maladies_chroniques_page.dart';
 import 'pages/prevention_conseils_page.dart';
 import 'pages/medicament_module/add_meds_page.dart';
 import 'pages/medicament_module/family_profiles_page.dart';
@@ -45,6 +45,7 @@ void main() async {
   await Hive.openBox<Vaccination>('vaccinations');
   await Hive.openBox<SuiviCroissance>('suivi_croissance');
   await Hive.openBox<ConseilSante>('conseils_sante');
+  await Hive.openBox<MaladieChronique>('maladies_chroniques');
   
   runApp(const SanteTchadApp());
 }

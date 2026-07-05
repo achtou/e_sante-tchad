@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/dossier_model.dart';
 import '../utils/colors.dart';
 
@@ -107,6 +109,71 @@ class _DossierMedicalPageState extends State<DossierMedicalPage> {
     setState(() => _isEditMode = true);
   }
 
+  Future<void> _exporterDossier() async {
+    final dossier = _dossierExistant;
+    if (dossier == null) return;
+
+    final dossierText = '''
+DOSSIER MÉDICAL - E-SANTÉ TCHAD
+================================
+
+IDENTITÉ
+--------
+Nom: ${dossier.nom}
+Prénom: ${dossier.prenom}
+Date de naissance: ${dossier.dateNaissance.day}/${dossier.dateNaissance.month}/${dossier.dateNaissance.year}
+Sexe: ${dossier.sexe}
+Téléphone: ${dossier.telephone}
+Ville: ${dossier.ville}
+
+INFORMATIONS MÉDICALES
+----------------------
+Groupe sanguin: ${dossier.groupeSanguin}
+Poids: ${dossier.poids} kg
+Taille: ${dossier.taille} cm
+
+ALLERGIES
+---------
+${dossier.allergies.isEmpty ? 'Aucune' : dossier.allergies.join(', ')}
+
+MALADIES CHRONIQUES
+-------------------
+${dossier.maladiesChroniques.isEmpty ? 'Aucune' : dossier.maladiesChroniques.join(', ')}
+
+TRAITEMENTS EN COURS
+--------------------
+${dossier.traitementsEnCours.isEmpty ? 'Aucun' : dossier.traitementsEnCours}
+
+CONTACT URGENCE
+---------------
+Nom: ${dossier.nomContactUrgence}
+Téléphone: ${dossier.telContactUrgence}
+
+VACCINATIONS EFFECTUÉES
+------------------------
+${dossier.vaccinsEffectues.isEmpty ? 'Aucune' : dossier.vaccinsEffectues.join(', ')}
+
+Date de création: ${dossier.dateCreation.day}/${dossier.dateCreation.month}/${dossier.dateCreation.year}
+Généré par E-Santé Tchad
+''';
+
+    try {
+      await Share.share(dossierText, subject: 'Dossier Médical - ${dossier.nom} ${dossier.prenom}');
+    } catch (e) {
+      // Fallback : copier dans le presse-papiers si le partage échoue
+      await Clipboard.setData(ClipboardData(text: dossierText));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Dossier copié dans le presse-papiers'),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   void _annulerEdition() {
     if (_dossierExistant != null) {
       _remplirFormulaire(_dossierExistant!);
@@ -209,6 +276,11 @@ class _DossierMedicalPageState extends State<DossierMedicalPage> {
         foregroundColor: AppColors.white,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: _exporterDossier,
+            tooltip: 'Exporter le dossier',
+          ),
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: _activerModeEdition,

@@ -66,7 +66,11 @@ class _PreventionConseilsPageState extends State<PreventionConseilsPage> {
   void initState() {
     super.initState();
     _conseilsBox = Hive.box<ConseilSante>('conseils_sante');
-    _initializeConseils();
+    _initializeConseils().then((_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
 
   Future<void> _initializeConseils() async {
