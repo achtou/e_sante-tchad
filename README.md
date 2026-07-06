@@ -185,9 +185,10 @@ Les contributions sont les bienvenues ! Pour contribuer :
 
 Ce projet est sous licence MIT - voir le fichier [LICENSE](LICENSE) pour plus de détails.
 
-## 👥 Auteurs
-
-- **Votre Nom** - *Développeur principal* - [votre-email@example.com]
+## 👩‍💻 Auteure
+**Achta** — Développeuse principale  
+licencie  — abeche, Tchad 🇹🇩  
+almasssousou4@gmail.com
 
 ## 🙏 Remerciements
 
@@ -197,9 +198,8 @@ Ce projet est sous licence MIT - voir le fichier [LICENSE](LICENSE) pour plus de
 ## 📞 Contact
 
 Pour toute question ou suggestion, n'hésitez pas à nous contacter :
-- Email : contact@esante-tchad.com
-- GitHub : [votre-username/e-sante](https://github.com/votre-username/e-sante)
-
+- 📧 Email : almasssousou4@gmail.com
+- 🐙 GitHub : github.com/achtou/e_sante-tchad
 ---
 
 **Développé avec ❤️ pour le Tchad**
