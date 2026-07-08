@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/colors.dart';
+import '../../services/language_service.dart';
 
 class IaSymptomesPage extends StatefulWidget {
   const IaSymptomesPage({super.key});
@@ -14,7 +15,6 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
   final List<String> _symptomes = [];
   Map<String, dynamic> _diagnostic = {};
   bool _isAnalyzing = false;
-  bool _isArabic = false;
   String _profilSelectionne = 'adulte'; // 'bebe' | 'enfant' | 'enceinte' | 'adulte'
   final ScrollController _scrollController = ScrollController();
   late AnimationController _pulseController;
@@ -61,7 +61,7 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
     if (_symptomes.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_isArabic ? 'أضف على الأقل عرضاً واحداً' : 'Veuillez ajouter au moins un symptôme'),
+          content: Text(LanguageService.isArabic ? 'أضف على الأقل عرضاً واحداً' : 'Veuillez ajouter au moins un symptôme'),
           backgroundColor: AppColors.danger,
         ),
       );
@@ -752,7 +752,7 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _isArabic ? titleAR : titleFR,
+                  LanguageService.isArabic ? titleAR : titleFR,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -762,7 +762,7 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _isArabic ? subtitleAR : subtitleFR,
+                  LanguageService.isArabic ? subtitleAR : subtitleFR,
                   style: TextStyle(
                     fontSize: 11,
                     color: Colors.grey[600],
@@ -940,7 +940,7 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _isArabic ? 'لمن هذه الاستشارة؟' : 'Pour qui est cette consultation ?',
+                    LanguageService.isArabic ? 'لمن هذه الاستشارة؟' : 'Pour qui est cette consultation ?',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -1244,12 +1244,12 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
   }
 
   Widget _buildResultatAnalyse() {
-    final lang = _isArabic ? 'ar' : 'fr';
+    final lang = LanguageService.isArabic ? 'ar' : 'fr';
     final diagnosticData = _diagnostic[lang] as Map<String, dynamic>;
     final urgence = diagnosticData['urgence'] as String;
     final couleurUrgence = _getCouleurUrgence(urgence);
     final fondUrgence = _getCouleurFondUrgence(urgence);
-    final texteUrgence = _getTexteUrgence(urgence, _isArabic);
+    final texteUrgence = _getTexteUrgence(urgence, LanguageService.isArabic);
     final maladie = diagnosticData['maladie'] as String;
     final description = diagnosticData['description'] as String;
     final probabilite = diagnosticData['probabilite'] as int;
@@ -1264,19 +1264,19 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
     Color profilBadgeColor = Colors.grey;
     switch (_profilSelectionne) {
       case 'bebe':
-        profilBadge = _isArabic ? '👶 تشخيص الرضيع' : '👶 Diagnostic Bébé';
+        profilBadge = LanguageService.isArabic ? '👶 تشخيص الرضيع' : '👶 Diagnostic Bébé';
         profilBadgeColor = Colors.blue;
         break;
       case 'enfant':
-        profilBadge = _isArabic ? '🧒 تشخيص الطفل' : '🧒 Diagnostic Enfant';
+        profilBadge = LanguageService.isArabic ? '🧒 تشخيص الطفل' : '🧒 Diagnostic Enfant';
         profilBadgeColor = Colors.green;
         break;
       case 'enceinte':
-        profilBadge = _isArabic ? '🤰 تشخيص الحمل' : '🤰 Diagnostic Grossesse';
+        profilBadge = LanguageService.isArabic ? '🤰 تشخيص الحمل' : '🤰 Diagnostic Grossesse';
         profilBadgeColor = Colors.pink;
         break;
       case 'adulte':
-        profilBadge = _isArabic ? '🧑 تشخيص البالغ' : '🧑 Diagnostic Adulte';
+        profilBadge = LanguageService.isArabic ? '🧑 تشخيص البالغ' : '🧑 Diagnostic Adulte';
         profilBadgeColor = Colors.grey;
         break;
     }
@@ -1334,8 +1334,9 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
                     ),
                     const SizedBox(width: 8),
                     InkWell(
-                      onTap: () {
-                        setState(() => _isArabic = !_isArabic);
+                      onTap: () async {
+                        await LanguageService.toggleLanguage();
+                        setState(() {});
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1349,7 +1350,7 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
                             const Icon(Icons.translate, size: 18, color: Color(0xFF00C853)),
                             const SizedBox(width: 4),
                             Text(
-                              _isArabic ? '🌐 Français' : '🌐 عربي',
+                              LanguageService.isArabic ? '🌐 Français' : '🌐 عربي',
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -1417,7 +1418,7 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
               children: [
                 // Maladie probable
                 Text(
-                  _isArabic ? 'التشخيص المحتمل' : 'Diagnostic probable',
+                  LanguageService.isArabic ? 'التشخيص المحتمل' : 'Diagnostic probable',
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textMedium,
@@ -1474,7 +1475,7 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
                         tween: Tween(begin: 0.0, end: probabilite.toDouble()),
                         builder: (context, value, child) {
                           return Text(
-                            '${_isArabic ? 'الاحتمال' : 'Probabilité'} : ${value.toInt()}%',
+                            '${LanguageService.isArabic ? 'الاحتمال' : 'Probabilité'} : ${value.toInt()}%',
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
@@ -1508,7 +1509,7 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
                             const Icon(Icons.warning_amber, color: Colors.orange, size: 24),
                             const SizedBox(width: 8),
                             Text(
-                              _isArabic ? '⚠️ تحذيرات خاصة' : '⚠️ Alertes spéciales',
+                              LanguageService.isArabic ? '⚠️ تحذيرات خاصة' : '⚠️ Alertes spéciales',
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
@@ -1555,7 +1556,7 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
                             const Icon(Icons.block, color: Colors.red, size: 24),
                             const SizedBox(width: 8),
                             Text(
-                              _isArabic ? '❌ أدوية ممنوعة' : '❌ Médicaments interdits',
+                              LanguageService.isArabic ? '❌ أدوية ممنوعة' : '❌ Médicaments interdits',
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
@@ -1602,7 +1603,7 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
                             const Icon(Icons.medication, color: Colors.blue, size: 24),
                             const SizedBox(width: 8),
                             Text(
-                              _isArabic ? '💊 جرعة الدواء' : '💊 Dosage médicament',
+                              LanguageService.isArabic ? '💊 جرعة الدواء' : '💊 Dosage médicament',
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
@@ -1627,7 +1628,7 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
 
                 // Section premiers secours
                 Text(
-                  _isArabic ? '💊 الإسعافات الأولية' : '💊 Premiers secours',
+                  LanguageService.isArabic ? '💊 الإسعافات الأولية' : '💊 Premiers secours',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -1673,7 +1674,7 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _isArabic ? '⚠️ تجنب' : '⚠️ À éviter',
+                              LanguageService.isArabic ? '⚠️ تجنب' : '⚠️ À éviter',
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
@@ -1706,7 +1707,7 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
                           // Naviguer vers CarteScreen
                         },
                         icon: const Icon(Icons.location_on),
-                        label: Text(_isArabic ? '📍 العثور على مركز' : '📍 Trouver un centre'),
+                        label: Text(LanguageService.isArabic ? '📍 العثور على مركز' : '📍 Trouver un centre'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF00C853),
                           foregroundColor: Colors.white,
@@ -1744,7 +1745,7 @@ class _IaSymptomesPageState extends State<IaSymptomesPage> with TickerProviderSt
                 // Disclaimer
                 Center(
                   child: Text(
-                    _isArabic ? '⚠️ هذا تقدير. استشر دائماً محترفاً.' : '⚠️ Ceci est une estimation. Consultez toujours un professionnel.',
+                    LanguageService.isArabic ? '⚠️ هذا تقدير. استشر دائماً محترفاً.' : '⚠️ Ceci est une estimation. Consultez toujours un professionnel.',
                     style: const TextStyle(
                       fontSize: 11,
                       color: AppColors.textMedium,

@@ -6,7 +6,11 @@ import 'models/dossier_model.dart';
 import 'models/medicament_model.dart';
 import 'models/sante_maternelle_model.dart';
 import 'models/prevention_model.dart';
+import 'models/maladie_chronique_model.dart';
 import 'pages/maladies_chroniques_page.dart';
+import 'services/language_service.dart';
+import 'services/medicament_notification_service.dart';
+import 'screens/splash/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/home/home_screen.dart';
@@ -24,6 +28,14 @@ void main() async {
   
   await Hive.initFlutter();
   
+  // Initialiser le service de langue
+  await LanguageService.init();
+  
+  // Initialiser le service de notifications
+  final notificationService = MedicamentNotificationService();
+  await notificationService.initialize();
+  await notificationService.requestNotificationPermission();
+  
   Hive.registerAdapter(UserModelAdapter());
   Hive.registerAdapter(DossierMedicalAdapter());
   Hive.registerAdapter(MedicamentAdapter());
@@ -34,6 +46,9 @@ void main() async {
   Hive.registerAdapter(VaccinationAdapter());
   Hive.registerAdapter(SuiviCroissanceAdapter());
   Hive.registerAdapter(ConseilSanteAdapter());
+  Hive.registerAdapter(MaladieChroniqueAdapter());
+  Hive.registerAdapter(MesureVitaleAdapter());
+  Hive.registerAdapter(ProfilFamilleAdapter());
   
   await Hive.openBox<UserModel>('users');
   await Hive.openBox<DossierMedical>('dossiers');
@@ -46,9 +61,51 @@ void main() async {
   await Hive.openBox<SuiviCroissance>('suivi_croissance');
   await Hive.openBox<ConseilSante>('conseils_sante');
   await Hive.openBox<MaladieChronique>('maladies_chroniques');
+  await Hive.openBox<ProfilFamille>('profils_famille');
   
-  runApp(const SanteTchadApp());
+  // Créer un profil "Moi" par défaut si la box est vide
+  final profilsBox = Hive.box<ProfilFamille>('profils_famille');
+  if (profilsBox.isEmpty) {
+    final profilDefaut = ProfilFamille(
+      id: 'moi',
+      nom: 'Moi',
+      relation: 'Moi',
+      dateNaissance: DateTime(1995, 1, 1),
+    );
+    await profilsBox.put('moi', profilDefaut);
+  }
+  
+  runApp(const MyApp());
 }
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'E-Santé Tchad',
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF00A86B),
+          brightness: Brightness.light,
+        ),
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+          },
+        ),
+      ),
+      home: const SplashScreen(),
+    );
+  }
+}
+
 
 class SanteTchadApp extends StatelessWidget {
   const SanteTchadApp({super.key});
@@ -91,8 +148,42 @@ class SanteTchadApp extends StatelessWidget {
   }
 }
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> with TickerProviderStateMixin {
+  late AnimationController _controller;
+  late List<Animation<double>> _cardAnimations;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+
+    _cardAnimations = List.generate(7, (index) {
+      return Tween<double>(begin: 0, end: 1).animate(
+        CurvedAnimation(
+          parent: _controller,
+          curve: Interval(index * 0.1, 1.0, curve: Curves.easeOutBack),
+        ),
+      );
+    });
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,14 +204,14 @@ class DashboardPage extends StatelessWidget {
   Widget _buildHeader(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.primary,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.18),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -129,15 +220,15 @@ class DashboardPage extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(
+              const Icon(
                 Icons.local_hospital,
                 color: Colors.white,
-                size: 32,
+                size: 40,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Text(
                 'Santé-Tchad',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
@@ -145,25 +236,25 @@ class DashboardPage extends StatelessWidget {
             ],
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.3)),
+              color: Colors.white.withOpacity(0.28),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: Colors.white.withOpacity(0.45)),
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.offline_bolt,
+                const Icon(
+                  Icons.wifi_off,
                   color: Colors.white,
-                  size: 20,
+                  size: 24,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Text(
-                  'Mode local hors-ligne activé',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  'Mode hors-ligne',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: Colors.white,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                       ),
                 ),
               ],
@@ -232,128 +323,183 @@ class DashboardPage extends StatelessWidget {
       child: GridView.builder(
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
-          crossAxisSpacing: 24,
-          mainAxisSpacing: 24,
-          childAspectRatio: 1.7,
+          crossAxisSpacing: 28,
+          mainAxisSpacing: 28,
+          childAspectRatio: 1.8,
         ),
         itemCount: cards.length,
         itemBuilder: (context, index) {
-          return _buildCard(context, cards[index]);
+          return AnimatedBuilder(
+            animation: _cardAnimations[index],
+            builder: (context, child) {
+              return Transform.translate(
+                offset: Offset(0, 60 * (1 - _cardAnimations[index].value)),
+                child: Opacity(
+                  opacity: _cardAnimations[index].value,
+                  child: _buildCard(context, cards[index]),
+                ),
+              );
+            },
+          );
         },
       ),
     );
   }
 
   Widget _buildCard(BuildContext context, _CardData data) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () => Navigator.pushNamed(context, data.route),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          transform: Matrix4.identity()..translate(0.0, 0.0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 20,
-                offset: const Offset(0, 4),
+    bool isPressed = false;
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return GestureDetector(
+          onTapDown: (_) => setState(() => isPressed = true),
+          onTapUp: (_) => setState(() => isPressed = false),
+          onTapCancel: () => setState(() => isPressed = false),
+          onTap: () => Navigator.pushNamed(context, data.route),
+          child: AnimatedScale(
+            scale: isPressed ? 0.97 : 1.0,
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeInOut,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: data.color.withOpacity(0.18),
+                    blurRadius: 28,
+                    offset: const Offset(0, 10),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 16,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+                border: Border.all(
+                  color: data.color.withOpacity(0.1),
+                  width: 1.8,
+                ),
               ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: () => Navigator.pushNamed(context, data.route),
-              splashColor: data.color.withOpacity(0.1),
-              highlightColor: data.color.withOpacity(0.05),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: data.color.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        data.icon,
-                        color: data.color,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            data.title,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1E293B),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: () => Navigator.pushNamed(context, data.route),
+                  splashColor: data.color.withOpacity(0.15),
+                  highlightColor: data.color.withOpacity(0.08),
+                  child: Padding(
+                    padding: const EdgeInsets.all(26),
+                    child: Row(
+                      children: [
+                        Hero(
+                          tag: 'icon-${data.route}',
+                          child: Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [data.color, data.color.withOpacity(0.8)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: data.color.withOpacity(0.35),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              data.icon,
+                              color: Colors.white,
+                              size: 32,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            data.description,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF64748B),
-                            ),
+                        ),
+                        const SizedBox(width: 24),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                data.title,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                data.description,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF64748B),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        TweenAnimationBuilder<double>(
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.easeInOut,
+                          tween: Tween(begin: 0, end: 1),
+                          builder: (context, value, child) {
+                            return Transform.translate(
+                              offset: Offset(-6 * (1 - value), 0),
+                              child: Opacity(
+                                opacity: value,
+                                child: Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 20,
+                                  color: data.color,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: Colors.grey[400],
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   Widget _buildFooter() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
-          top: BorderSide(color: Colors.grey[200]!),
+          top: BorderSide(color: Colors.grey[200]!, width: 1.5),
         ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.verified_user,
-            color: const Color(0xFF00A86B),
-            size: 18,
+          const Icon(
+            Icons.favorite,
+            color: Color(0xFFE91E63),
+            size: 22,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Text(
-            'Réalisé par Achta Sougoudou',
+            'Réalisé avec passion par Achta Sougoudou',
             style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w300,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: Color(0xFF475569),
-              letterSpacing: 0.5,
+              letterSpacing: 0.3,
             ),
           ),
         ],

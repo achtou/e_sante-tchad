@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../models/dossier_model.dart';
 import '../utils/colors.dart';
 
@@ -113,65 +116,238 @@ class _DossierMedicalPageState extends State<DossierMedicalPage> {
     final dossier = _dossierExistant;
     if (dossier == null) return;
 
-    final dossierText = '''
-DOSSIER MÉDICAL - E-SANTÉ TCHAD
-================================
+    // Créer le document PDF
+    final pdf = pw.Document();
 
-IDENTITÉ
---------
-Nom: ${dossier.nom}
-Prénom: ${dossier.prenom}
-Date de naissance: ${dossier.dateNaissance.day}/${dossier.dateNaissance.month}/${dossier.dateNaissance.year}
-Sexe: ${dossier.sexe}
-Téléphone: ${dossier.telephone}
-Ville: ${dossier.ville}
+    // Ajouter une page avec le contenu
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // En-tête
+              pw.Container(
+                padding: const pw.EdgeInsets.all(16),
+                decoration: pw.BoxDecoration(
+                  color: PdfColor.fromHex('0d3b6e'),
+                  borderRadius: pw.BorderRadius.circular(8),
+                ),
+                child: pw.Row(
+                  children: [
+                    pw.Icon(
+                      pw.IconData(0xe900),
+                      color: PdfColors.white,
+                      size: 40,
+                    ),
+                    pw.SizedBox(width: 16),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'E-SANTÉ TCHAD',
+                          style: pw.TextStyle(
+                            color: PdfColors.white,
+                            fontSize: 24,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                        pw.Text(
+                          'Dossier Médical',
+                          style: pw.TextStyle(
+                            color: PdfColors.white.withOpacity(0.8),
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 24),
 
-INFORMATIONS MÉDICALES
-----------------------
-Groupe sanguin: ${dossier.groupeSanguin}
-Poids: ${dossier.poids} kg
-Taille: ${dossier.taille} cm
+              // Section Identité
+              _buildPdfSection('IDENTITÉ', [
+                _buildPdfRow('Nom', dossier.nom),
+                _buildPdfRow('Prénom', dossier.prenom),
+                _buildPdfRow(
+                  'Date de naissance',
+                  '${dossier.dateNaissance.day}/${dossier.dateNaissance.month}/${dossier.dateNaissance.year}',
+                ),
+                _buildPdfRow('Sexe', dossier.sexe),
+                _buildPdfRow('Téléphone', dossier.telephone.isEmpty ? 'Non renseigné' : dossier.telephone),
+                _buildPdfRow('Ville', dossier.ville.isEmpty ? 'Non renseigné' : dossier.ville),
+              ]),
+              pw.SizedBox(height: 20),
 
-ALLERGIES
----------
-${dossier.allergies.isEmpty ? 'Aucune' : dossier.allergies.join(', ')}
+              // Section Informations Médicales
+              _buildPdfSection('INFORMATIONS MÉDICALES', [
+                _buildPdfRow('Groupe sanguin', dossier.groupeSanguin.isEmpty ? 'Non renseigné' : dossier.groupeSanguin),
+                _buildPdfRow('Poids', dossier.poids > 0 ? '${dossier.poids} kg' : 'Non renseigné'),
+                _buildPdfRow('Taille', dossier.taille > 0 ? '${dossier.taille} cm' : 'Non renseigné'),
+              ]),
+              pw.SizedBox(height: 20),
 
-MALADIES CHRONIQUES
--------------------
-${dossier.maladiesChroniques.isEmpty ? 'Aucune' : dossier.maladiesChroniques.join(', ')}
+              // Allergies
+              _buildPdfSection('ALLERGIES', [
+                pw.Text(
+                  dossier.allergies.isEmpty ? 'Aucune allergie' : dossier.allergies.join(', '),
+                  style: pw.TextStyle(
+                    fontSize: 14,
+                    color: dossier.allergies.isEmpty ? PdfColors.grey : PdfColors.red,
+                  ),
+                ),
+              ]),
+              pw.SizedBox(height: 20),
 
-TRAITEMENTS EN COURS
---------------------
-${dossier.traitementsEnCours.isEmpty ? 'Aucun' : dossier.traitementsEnCours}
+              // Maladies Chroniques
+              _buildPdfSection('MALADIES CHRONIQUES', [
+                pw.Text(
+                  dossier.maladiesChroniques.isEmpty
+                      ? 'Aucune maladie chronique'
+                      : dossier.maladiesChroniques.join(', '),
+                  style: pw.TextStyle(
+                    fontSize: 14,
+                    color: dossier.maladiesChroniques.isEmpty ? PdfColors.grey : PdfColors.orange,
+                  ),
+                ),
+              ]),
+              pw.SizedBox(height: 20),
 
-CONTACT URGENCE
----------------
-Nom: ${dossier.nomContactUrgence}
-Téléphone: ${dossier.telContactUrgence}
+              // Traitements en cours
+              _buildPdfSection('TRAITEMENTS EN COURS', [
+                pw.Text(
+                  dossier.traitementsEnCours.isEmpty ? 'Aucun traitement' : dossier.traitementsEnCours,
+                  style: const pw.TextStyle(fontSize: 14),
+                ),
+              ]),
+              pw.SizedBox(height: 20),
 
-VACCINATIONS EFFECTUÉES
-------------------------
-${dossier.vaccinsEffectues.isEmpty ? 'Aucune' : dossier.vaccinsEffectues.join(', ')}
+              // Contact Urgence
+              _buildPdfSection('CONTACT D\'URGENCE', [
+                _buildPdfRow('Nom', dossier.nomContactUrgence.isEmpty ? 'Non renseigné' : dossier.nomContactUrgence),
+                _buildPdfRow('Téléphone', dossier.telContactUrgence.isEmpty ? 'Non renseigné' : dossier.telContactUrgence),
+              ]),
+              pw.SizedBox(height: 20),
 
-Date de création: ${dossier.dateCreation.day}/${dossier.dateCreation.month}/${dossier.dateCreation.year}
-Généré par E-Santé Tchad
-''';
+              // Vaccins
+              _buildPdfSection('VACCINATIONS EFFECTUÉES', [
+                pw.Text(
+                  dossier.vaccinsEffectues.isEmpty
+                      ? 'Aucun vaccin renseigné'
+                      : dossier.vaccinsEffectues.join(', '),
+                  style: const pw.TextStyle(fontSize: 14),
+                ),
+              ]),
+              pw.SizedBox(height: 24),
 
-    try {
-      await Share.share(dossierText, subject: 'Dossier Médical - ${dossier.nom} ${dossier.prenom}');
-    } catch (e) {
-      // Fallback : copier dans le presse-papiers si le partage échoue
-      await Clipboard.setData(ClipboardData(text: dossierText));
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Dossier copié dans le presse-papiers'),
-            backgroundColor: AppColors.primary,
-            behavior: SnackBarBehavior.floating,
+              // Pied de page
+              pw.Divider(),
+              pw.SizedBox(height: 16),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'Généré par E-Santé Tchad',
+                    style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey),
+                  ),
+                  pw.Text(
+                    '${dossier.dateCreation.day}/${dossier.dateCreation.month}/${dossier.dateCreation.year}',
+                    style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    // Afficher le PDF avec options d'impression et partage
+    if (mounted) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => Scaffold(
+            appBar: AppBar(
+              title: Text('Dossier Médical - ${dossier.nom} ${dossier.prenom}'),
+              backgroundColor: AppColors.primary,
+            ),
+            body: PdfPreview(
+              build: (format) => pdf.save(),
+              canChangePageFormat: false,
+              canChangeOrientation: false,
+              canDebug: false,
+              actions: [
+                PdfPreviewAction(
+                  icon: const Icon(Icons.share),
+                  onPressed: (context, build, pageFormat) async {
+                    final bytes = await build(pageFormat);
+                    await Share.shareXFiles(
+                      [XFile.fromData(bytes, mimeType: 'application/pdf', name: 'dossier_medical_${dossier.nom}_${dossier.prenom}.pdf')],
+                      subject: 'Dossier Médical - ${dossier.nom} ${dossier.prenom}',
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
-        );
-      }
+        ),
+      );
     }
+  }
+
+  pw.Widget _buildPdfSection(String title, List<pw.Widget> children) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Container(
+          padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          decoration: pw.BoxDecoration(
+            color: PdfColors.grey100,
+            borderRadius: pw.BorderRadius.circular(4),
+          ),
+          child: pw.Text(
+            title,
+            style: pw.TextStyle(
+              fontSize: 16,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColor.fromHex('0d3b6e'),
+            ),
+          ),
+        ),
+        pw.SizedBox(height: 12),
+        ...children,
+      ],
+    );
+  }
+
+  pw.Widget _buildPdfRow(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 6),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.SizedBox(
+            width: 140,
+            child: pw.Text(
+              label,
+              style: pw.TextStyle(
+                fontSize: 14,
+                color: PdfColors.grey600,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+          ),
+          pw.Expanded(
+            child: pw.Text(
+              value,
+              style: const pw.TextStyle(fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _annulerEdition() {

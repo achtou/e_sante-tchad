@@ -1,172 +1,166 @@
-/// Service de gestion des notifications pour les rappels de médicaments
-/// 
-/// NOTE: Ce service nécessite les packages suivants à ajouter dans pubspec.yaml:
-/// - flutter_local_notifications: ^16.3.0
-/// - timezone: ^0.9.2
-/// 
-/// Après installation, décommentez les imports et le code ci-dessous.
-
-/*
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:hive_flutter/hive_flutter.dart';
+import '../models/medicament_model.dart';
 import '../models/medicament_module/medicament_module.dart';
-*/
 
 class MedicamentNotificationService {
   static final MedicamentNotificationService _instance = MedicamentNotificationService._internal();
   factory MedicamentNotificationService() => _instance;
   MedicamentNotificationService._internal();
 
-  /*
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
   bool _isInitialized = false;
 
-  /// Initialiser le service de notifications
+  static const AndroidNotificationChannel channel = AndroidNotificationChannel(
+    'medicaments_channel',
+    'Rappels médicaments',
+    channelDescription: 'Notifications pour les rappels de prise de médicaments',
+    importance: Importance.high,
+    priority: Priority.high,
+    playSound: true,
+    enableVibration: true,
+  );
+
   Future<void> initialize() async {
     if (_isInitialized) return;
 
-    tz_data.initializeTimeZones();
+    tz.initializeTimeZones();
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings();
-    const initSettings = InitializationSettings(android: androidSettings, iOS: iosSettings);
+    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+    const InitializationSettings initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
 
     await _notificationsPlugin.initialize(
       initSettings,
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
+    await _notificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+
     _isInitialized = true;
   }
 
-  /// Planifier les notifications pour un médicament
-  Future<void> planifierNotifications(MedicamentModule medicament, ProfilFamille profil) async {
+  Future<void> planifierNotificationsMedicament(Medicament medicament) async {
     if (!_isInitialized) await initialize();
-
-    // Annuler les notifications existantes pour ce médicament
     await annulerNotificationsMedicament(medicament.id);
-
-    // Planifier une notification pour chaque horaire
-    for (final horaire in medicament.horairesPrise) {
+    for (int i = 0; i < medicament.heuresPrise.length; i++) {
+      final heureString = medicament.heuresPrise[i];
       await _planifierNotificationQuotidienne(
-        medicament: medicament,
-        profil: profil,
-        horaire: horaire,
+        medicamentId: medicament.id,
+        nomMedicament: medicament.nom,
+        dosage: medicament.dosage,
+        heureString: heureString,
+        index: i,
+        dateFin: medicament.dateFin,
       );
     }
   }
 
-  /// Planifier une notification quotidienne
+  Future<void> planifierNotificationsMedicamentModule(MedicamentModule medicament) async {
+    if (!_isInitialized) await initialize();
+    await annulerNotificationsMedicament(medicament.id);
+    for (int i = 0; i < medicament.horairesPrise.length; i++) {
+      final horaire = medicament.horairesPrise[i];
+      await _planifierNotificationQuotidienne(
+        medicamentId: medicament.id,
+        nomMedicament: medicament.nom,
+        dosage: medicament.dosage,
+        heureString: horaire.heure,
+        index: i,
+        dateFin: medicament.dateFin,
+      );
+    }
+  }
+
   Future<void> _planifierNotificationQuotidienne({
-    required MedicamentModule medicament,
-    required ProfilFamille profil,
-    required HorairePrise horaire,
+    required String medicamentId,
+    required String nomMedicament,
+    required String dosage,
+    required String heureString,
+    required int index,
+    required DateTime dateFin,
   }) async {
-    final heureParts = horaire.heure.split(':');
+    final heureParts = heureString.split(':');
     final heure = int.parse(heureParts[0]);
     final minute = int.parse(heureParts[1]);
 
-    // Notification principale
-    await _notificationsPlugin.zonedSchedule(
-      '${medicament.id}_${horaire.id}_principal',
-      '💊 ${medicament.nom} - ${profil.nom}',
-      '⏰ ${medicament.dosage} à ${horaire.heure} pour ${profil.relation}',
-      _nextOccurrence(heure, minute),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'medicaments_channel',
-          'Rappels médicaments',
-          channelDescription: 'Notifications pour les rappels de prise de médicaments',
-          importance: Importance.high,
-          priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
-        ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      payload: '${medicament.id}|${horaire.id}|principal',
-    );
-
-    // Notification de relance (30 min après)
-    await _notificationsPlugin.zonedSchedule(
-      '${medicament.id}_${horaire.id}_relance',
-      '⏰ RAPPEL: ${medicament.nom} - ${profil.nom}',
-      '⏰ ${medicament.dosage} à ${horaire.heure} pour ${profil.relation} (Relance)',
-      _nextOccurrence(heure, minute + 30),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'medicaments_channel',
-          'Rappels médicaments',
-          channelDescription: 'Notifications pour les rappels de prise de médicaments',
-          importance: Importance.high,
-          priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
-        ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      payload: '${medicament.id}|${horaire.id}|relance',
-    );
-  }
-
-  /// Annuler toutes les notifications pour un médicament
-  Future<void> annulerNotificationsMedicament(String medicamentId) async {
-    await _notificationsPlugin.cancel(medicamentId.hashCode);
-  }
-
-  /// Enregistrer une action utilisateur sur une notification
-  Future<void> enregistrerAction({
-    required String medicamentId,
-    required String horaireId,
-    required String action, // 'j_ai_pris', '+30min', 'ignore'
-  }) async {
-    // TODO: Sauvegarder dans la base de données
-    // Mettre à jour le statut de la prise dans PriseStatut
-    print('Action enregistrée: $action pour médicament $medicamentId, horaire $horaireId');
-  }
-
-  /// Calculer la prochaine occurrence à une heure donnée
-  tz.TZDateTime _nextOccurrence(int heure, int minute) {
     final now = tz.TZDateTime.now(tz.local);
-    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, heure, minute);
+    var scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, heure, minute);
 
-    if (scheduled.isBefore(now)) {
-      scheduled = scheduled.add(const Duration(days: 1));
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 
-    return scheduled;
+    final lastScheduledDate = scheduledDate;
+
+    if (lastScheduledDate.isAfter(dateFin)) {
+      return;
+    }
+
+    final notificationId = _generateNotificationId(medicamentId, index);
+
+    await _notificationsPlugin.zonedSchedule(
+      notificationId,
+      '💊 Rappel médicament',
+      '⏰ Prendre $dosage de $nomMedicament à $heureString',
+      scheduledDate,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'medicaments_channel',
+          'Rappels médicaments',
+          channelDescription: 'Notifications pour les rappels de prise de médicaments',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+          playSound: true,
+          enableVibration: true,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidAllowWhileIdle: true,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time,
+      payload: 'medicament|$medicamentId|$index',
+    );
   }
 
-  /// Gérer le tap sur une notification
+  Future<void> annulerNotificationsMedicament(String medicamentId) async {
+    await _notificationsPlugin.cancel(medicamentId.hashCode);
+    for (int i = 0; i < 10; i++) {
+      final notificationId = _generateNotificationId(medicamentId, i);
+      await _notificationsPlugin.cancel(notificationId);
+    }
+  }
+
+  int _generateNotificationId(String medicamentId, int index) {
+    return (medicamentId.hashCode + index).abs() % 0x7FFFFFFF;
+  }
+
   void _onNotificationTapped(NotificationResponse response) {
     final payload = response.payload;
     if (payload != null) {
       final parts = payload.split('|');
-      final medicamentId = parts[0];
-      final horaireId = parts[1];
-      final type = parts[2]; // 'principal' ou 'relance'
-
-      print('Notification tapée: médicament=$medicamentId, horaire=$horaireId, type=$type');
-
-      // TODO: Naviguer vers l'écran de réponse à la notification
-      // Afficher les boutons d'action: [J'ai pris] [+30min] [❌]
+      if (parts[0] == 'medicament') {
+        final medicamentId = parts[1];
+        print('Notification tapée pour médicament: $medicamentId');
+      }
     }
   }
 
-  /// Obtenir les notifications programmées
-  Future<List<PendingNotificationRequest>> getNotificationsProgrammees() async {
-    return await _notificationsPlugin.pendingNotificationRequests();
-  }
-  */
-
-  /// Version simplifiée sans dépendances (pour démonstration)
-  void planifierNotificationsDemo(String medicamentId, String nomMedicament) {
-    print('🔔 Notification planifiée pour: $nomMedicament');
-    print('   - Notification principale à chaque horaire configuré');
-    print('   - Relance automatique après 30 min si non répondu');
-    print('   - Boutons d\'action: [J\'ai pris] [+30min] [❌]');
+  Future<void> requestNotificationPermission() async {
+    final AndroidFlutterLocalNotificationsPlugin? androidPlugin = _notificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.requestNotificationsPermission();
   }
 }

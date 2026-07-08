@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../models/user_model.dart';
 import '../../utils/colors.dart';
+import '../../services/language_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -24,7 +25,6 @@ class _RegisterScreenState extends State<RegisterScreen>
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
-  bool _isArabic = false;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
@@ -90,17 +90,17 @@ class _RegisterScreenState extends State<RegisterScreen>
         _phoneController.text.isEmpty ||
         _passwordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty) {
-      _showErrorSnackBar(_isArabic ? 'يرجى ملء جميع الحقول' : 'Veuillez remplir tous les champs');
+      _showErrorSnackBar(LanguageService.isArabic ? 'يرجى ملء جميع الحقول' : 'Veuillez remplir tous les champs');
       return;
     }
 
     if (_phoneController.text.length < 8) {
-      _showErrorSnackBar(_isArabic ? 'رقم الهاتف يجب أن يكون 8 أرقام على الأقل' : 'Le numéro de téléphone doit avoir au moins 8 chiffres');
+      _showErrorSnackBar(LanguageService.isArabic ? 'رقم الهاتف يجب أن يكون 8 أرقام على الأقل' : 'Le numéro de téléphone doit avoir au moins 8 chiffres');
       return;
     }
 
     if (_passwordController.text != _confirmPasswordController.text) {
-      _showErrorSnackBar(_isArabic ? 'كلمات المرور غير متطابقة' : 'Les mots de passe ne correspondent pas');
+      _showErrorSnackBar(LanguageService.isArabic ? 'كلمات المرور غير متطابقة' : 'Les mots de passe ne correspondent pas');
       return;
     }
 
@@ -120,7 +120,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       setState(() {
         _isLoading = false;
       });
-      _showErrorSnackBar(_isArabic ? 'رقم الهاتف موجود بالفعل' : 'Ce numéro de téléphone existe déjà');
+      _showErrorSnackBar(LanguageService.isArabic ? 'رقم الهاتف موجود بالفعل' : 'Ce numéro de téléphone existe déjà');
     } catch (e) {
       // Utilisateur n'existe pas, on peut créer
       try {
@@ -143,14 +143,14 @@ class _RegisterScreenState extends State<RegisterScreen>
           setState(() {
             _isLoading = false;
           });
-          _showSuccessSnackBar(_isArabic ? 'تم إنشاء الحساب بنجاح!' : 'Compte créé avec succès !');
+          _showSuccessSnackBar(LanguageService.isArabic ? 'تم إنشاء الحساب بنجاح!' : 'Compte créé avec succès !');
           Navigator.pushReplacementNamed(context, '/home');
         }
       } catch (e) {
         setState(() {
           _isLoading = false;
         });
-        _showErrorSnackBar(_isArabic ? 'حدث خطأ أثناء إنشاء الحساب' : 'Erreur lors de la création du compte');
+        _showErrorSnackBar(LanguageService.isArabic ? 'حدث خطأ أثناء إنشاء الحساب' : 'Erreur lors de la création du compte');
       }
     }
   }
@@ -189,7 +189,7 @@ class _RegisterScreenState extends State<RegisterScreen>
         body: SafeArea(
           child: SingleChildScrollView(
             child: Directionality(
-              textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
+              textDirection: LanguageService.isArabic ? TextDirection.rtl : TextDirection.ltr,
               child: Column(
                 children: [
                   _buildHeaderSection(),
@@ -275,7 +275,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _isArabic ? 'إنشاء حساب' : 'Créer un compte',
+                  LanguageService.isArabic ? 'إنشاء حساب' : 'Créer un compte',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -284,7 +284,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _isArabic ? 'انضم إلى eSanté Tchad' : 'Rejoignez eSanté Tchad',
+                  LanguageService.isArabic ? 'انضم إلى eSanté Tchad' : 'Rejoignez eSanté Tchad',
                   style: TextStyle(
                     fontSize: 13,
                     color: AppColors.white.withOpacity(0.7),
@@ -299,12 +299,11 @@ class _RegisterScreenState extends State<RegisterScreen>
   }
 
   Widget _buildLanguageButton(String text, bool isArabicBtn) {
-    final isActive = (isArabicBtn && _isArabic) || (!isArabicBtn && !_isArabic);
+    final isActive = (isArabicBtn && LanguageService.isArabic) || (!isArabicBtn && !LanguageService.isArabic);
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _isArabic = isArabicBtn;
-        });
+      onTap: () async {
+        await LanguageService.setLanguage(isArabicBtn);
+        setState(() {});
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -372,7 +371,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     return TextField(
       controller: _nameController,
       decoration: InputDecoration(
-        labelText: _isArabic ? 'الاسم الكامل' : 'Nom complet',
+        labelText: LanguageService.isArabic ? 'الاسم الكامل' : 'Nom complet',
         labelStyle: const TextStyle(color: AppColors.primary),
         prefixIcon: const Icon(Icons.person, color: AppColors.primary),
         border: OutlineInputBorder(
@@ -394,7 +393,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       keyboardType: TextInputType.phone,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       decoration: InputDecoration(
-        labelText: _isArabic ? 'رقم الهاتف' : 'Numéro de téléphone',
+        labelText: LanguageService.isArabic ? 'رقم الهاتف' : 'Numéro de téléphone',
         labelStyle: const TextStyle(color: AppColors.primary),
         prefixIcon: const Icon(Icons.phone, color: AppColors.primary),
         prefixText: '+235 ',
@@ -424,7 +423,7 @@ class _RegisterScreenState extends State<RegisterScreen>
           obscureText: _obscurePassword,
           onChanged: (value) => setState(() {}),
           decoration: InputDecoration(
-            labelText: _isArabic ? 'كلمة المرور' : 'Mot de passe',
+            labelText: LanguageService.isArabic ? 'كلمة المرور' : 'Mot de passe',
             labelStyle: const TextStyle(color: AppColors.primary),
             prefixIcon: const Icon(Icons.lock, color: AppColors.primary),
             border: OutlineInputBorder(
@@ -455,7 +454,7 @@ class _RegisterScreenState extends State<RegisterScreen>
             child: Row(
               children: [
                 Text(
-                  _isArabic 
+                  LanguageService.isArabic 
                       ? 'القوة: ${_getPasswordStrength(_passwordController.text)}'
                       : 'Force: ${_getPasswordStrength(_passwordController.text)}',
                   style: TextStyle(
@@ -491,7 +490,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       obscureText: _obscureConfirmPassword,
       onChanged: (value) => setState(() {}),
       decoration: InputDecoration(
-        labelText: _isArabic ? 'تأكيد كلمة المرور' : 'Confirmer le mot de passe',
+        labelText: LanguageService.isArabic ? 'تأكيد كلمة المرور' : 'Confirmer le mot de passe',
         labelStyle: const TextStyle(color: AppColors.primary),
         prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
         border: OutlineInputBorder(
@@ -525,7 +524,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     return DropdownButtonFormField<String>(
       value: _selectedCity,
       decoration: InputDecoration(
-        labelText: _isArabic ? 'مدينتك' : 'Votre ville',
+        labelText: LanguageService.isArabic ? 'مدينتك' : 'Votre ville',
         labelStyle: const TextStyle(color: AppColors.primary),
         prefixIcon: const Icon(Icons.location_on, color: AppColors.primary),
         border: OutlineInputBorder(
@@ -586,7 +585,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                     ),
                   )
                 : Text(
-                    _isArabic ? 'إنشاء حسابي' : 'CRÉER MON COMPTE',
+                    LanguageService.isArabic ? 'إنشاء حسابي' : 'CRÉER MON COMPTE',
                     style: const TextStyle(
                       color: AppColors.white,
                       fontSize: 16,
@@ -603,11 +602,11 @@ class _RegisterScreenState extends State<RegisterScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(_isArabic ? 'لديك حساب بالفعل؟ ' : 'Déjà un compte ? '),
+        Text(LanguageService.isArabic ? 'لديك حساب بالفعل؟ ' : 'Déjà un compte ? '),
         GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Text(
-            _isArabic ? 'تسجيل الدخول' : 'Se connecter',
+            LanguageService.isArabic ? 'تسجيل الدخول' : 'Se connecter',
             style: const TextStyle(
               color: AppColors.primary,
               fontWeight: FontWeight.bold,
@@ -633,7 +632,7 @@ class _RegisterScreenState extends State<RegisterScreen>
           const Icon(Icons.wifi_off, color: AppColors.white, size: 16),
           const SizedBox(width: 8),
           Text(
-            _isArabic ? 'يعمل بدون اتصال بالإنترنت' : 'Fonctionne sans connexion internet',
+            LanguageService.isArabic ? 'يعمل بدون اتصال بالإنترنت' : 'Fonctionne sans connexion internet',
             style: const TextStyle(
               color: AppColors.white,
               fontSize: 12,

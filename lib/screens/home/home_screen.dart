@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
+// import 'package:connectivity_plus/connectivity_plus.dart';  // Temporairement désactivé pour build APK
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/colors.dart';
+import '../../services/language_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,7 +23,8 @@ class _HomeScreenState extends State<HomeScreen>
   late Animation<double> _pulseAnimation;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
-  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
+  // late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;  // Temporairement désactivé pour build APK
+  final TextEditingController _searchController = TextEditingController();
 
   final List<_ServiceCard> _serviceCards = [
     _ServiceCard(
@@ -111,22 +113,23 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     _loadUserData();
-    _checkConnectivity();
+    // _checkConnectivity();  // Temporairement désactivé pour build APK
     _initAnimations();
-    _connectivitySubscription = Connectivity()
-        .onConnectivityChanged
-        .listen((List<ConnectivityResult> results) {
-      setState(() {
-        _isOnline = results.isNotEmpty && results.first != ConnectivityResult.none;
-      });
-    });
+    // _connectivitySubscription = Connectivity()  // Temporairement désactivé pour build APK
+    //     .onConnectivityChanged
+    //     .listen((List<ConnectivityResult> results) {
+    //   setState(() {
+    //     _isOnline = results.isNotEmpty && results.first != ConnectivityResult.none;
+    //   });
+    // });
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
     _fadeController.dispose();
-    _connectivitySubscription.cancel();
+    // _connectivitySubscription.cancel();  // Temporairement désactivé pour build APK
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -134,16 +137,45 @@ class _HomeScreenState extends State<HomeScreen>
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _userName = prefs.getString('userName') ?? '';
-      _isArabic = prefs.getBool('isArabic') ?? false;
+      _isArabic = LanguageService.isArabic;
     });
   }
 
-  Future<void> _checkConnectivity() async {
-    final connectivityResults = await Connectivity().checkConnectivity();
-    setState(() {
-      _isOnline = connectivityResults.isNotEmpty && connectivityResults.first != ConnectivityResult.none;
-    });
+  void _performSearch(String query) {
+    // Déterminer le type de recherche basé sur les mots-clés
+    final lowerQuery = query.toLowerCase();
+    
+    // Mots-clés pour symptômes
+    final symptomKeywords = ['symptôme', 'symptome', 'mal', 'douleur', 'fièvre', 'fievre', 'tête', 'ventre', 'maladie', 'diagnostic', 'analyse', 'ألم', 'مرض', 'حمى', 'صداع'];
+    
+    // Mots-clés pour médicaments
+    final medKeywords = ['médicament', 'medicament', 'pilule', 'comprimé', 'comprime', 'traitement', 'remède', 'remede', 'rappel', 'prise', 'دواء', 'حبة', 'علاج'];
+    
+    // Mots-clés pour prévention/alerte saison
+    final preventionKeywords = ['prévention', 'prevention', 'conseil', 'saison', 'alerte', 'hygiène', 'hygiene', 'nutrition', 'santé', 'sante', 'وقاية', 'نصيحة', 'موسم', 'تنبيه', 'نظافة', 'تغذية', 'صحة'];
+    
+    bool isSymptomSearch = symptomKeywords.any((keyword) => lowerQuery.contains(keyword));
+    bool isMedSearch = medKeywords.any((keyword) => lowerQuery.contains(keyword));
+    bool isPreventionSearch = preventionKeywords.any((keyword) => lowerQuery.contains(keyword));
+    
+    if (isSymptomSearch) {
+      Navigator.pushNamed(context, '/ia-symptomes');
+    } else if (isMedSearch) {
+      Navigator.pushNamed(context, '/rappel-medicaments');
+    } else if (isPreventionSearch) {
+      Navigator.pushNamed(context, '/prevention-conseils');
+    } else {
+      // Par défaut, rediriger vers l'assistant IA pour les symptômes
+      Navigator.pushNamed(context, '/ia-symptomes');
+    }
   }
+
+  // Future<void> _checkConnectivity() async {  // Temporairement désactivé pour build APK
+  //   final connectivityResults = await Connectivity().checkConnectivity();
+  //   setState(() {
+  //     _isOnline = connectivityResults.isNotEmpty && connectivityResults.first != ConnectivityResult.none;
+  //   });
+  // }
 
   void _initAnimations() {
     _pulseController = AnimationController(
@@ -383,14 +415,24 @@ class _HomeScreenState extends State<HomeScreen>
                   const Icon(Icons.search, color: AppColors.primary, size: 20),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      _isArabic 
-                          ? 'ابحث عن أعراض، أدوية...'
-                          : 'Rechercher symptômes, médicaments...',
-                      style: TextStyle(
-                        color: AppColors.textMedium,
-                        fontSize: 13,
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: _isArabic 
+                            ? 'ابحث عن أعراض، أدوية...'
+                            : 'Rechercher symptômes, médicaments...',
+                        hintStyle: TextStyle(
+                          color: AppColors.textMedium,
+                          fontSize: 13,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
                       ),
+                      onSubmitted: (query) {
+                        if (query.trim().isEmpty) return;
+                        _performSearch(query);
+                        _searchController.clear();
+                      },
                     ),
                   ),
                 ],

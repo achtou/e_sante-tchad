@@ -1,6 +1,32 @@
 import 'package:hive/hive.dart';
 part 'medicament_model.g.dart';
 
+@HiveType(typeId: 7)
+class ProfilFamille extends HiveObject {
+  @HiveField(0)
+  String id;
+
+  @HiveField(1)
+  String nom;
+
+  @HiveField(2)
+  String relation; // 'Moi', 'Enfant', 'Papa', 'Maman enceinte', 'Autre'
+
+  @HiveField(3)
+  String? photo;
+
+  @HiveField(4)
+  DateTime dateNaissance;
+
+  ProfilFamille({
+    required this.id,
+    required this.nom,
+    required this.relation,
+    this.photo,
+    required this.dateNaissance,
+  });
+}
+
 @HiveType(typeId: 5)
 class Medicament extends HiveObject {
 
@@ -87,6 +113,9 @@ class Medicament extends HiveObject {
   @HiveField(19)
   String? photoOrdonnance;
 
+  @HiveField(20)
+  String? profilId;
+
   Medicament({
     required this.id,
     required this.nom,
@@ -98,7 +127,7 @@ class Medicament extends HiveObject {
     this.stockAlerte = 5,
     this.heuresPrise = const ['08:00'],
     this.joursActifs = const [
-      true, true, true, 
+      true, true, true,
       true, true, true, true
     ],
     this.dureeTreatement = 7,
@@ -111,6 +140,7 @@ class Medicament extends HiveObject {
     this.prisesJson = const [],
     required this.dateCreation,
     this.photoOrdonnance,
+    this.profilId,
   });
 }
 

@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/user_model.dart';
 import '../../utils/colors.dart';
+import '../../services/language_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,7 +21,6 @@ class _LoginScreenState extends State<LoginScreen>
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
-  bool _isArabic = false;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
@@ -53,7 +53,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   void _handleLogin() async {
     if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showErrorSnackBar(_isArabic ? 'يرجى ملء جميع الحقول' : 'Veuillez remplir tous les champs');
+      _showErrorSnackBar(LanguageService.isArabic ? 'يرجى ملء جميع الحقول' : 'Veuillez remplir tous les champs');
       return;
     }
 
@@ -87,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen>
       setState(() {
         _isLoading = false;
       });
-      _showErrorSnackBar(_isArabic ? 'رقم الهاتف أو كلمة المرور غير صحيحة' : 'Numéro ou mot de passe incorrect');
+      _showErrorSnackBar(LanguageService.isArabic ? 'رقم الهاتف أو كلمة المرور غير صحيحة' : 'Numéro ou mot de passe incorrect');
     }
   }
 
@@ -115,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen>
         body: SafeArea(
           child: SingleChildScrollView(
             child: Directionality(
-              textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
+              textDirection: LanguageService.isArabic ? TextDirection.rtl : TextDirection.ltr,
               child: Column(
                 children: [
                   _buildHeaderSection(),
@@ -215,7 +215,7 @@ class _LoginScreenState extends State<LoginScreen>
                     border: Border.all(color: AppColors.white.withOpacity(0.3)),
                   ),
                   child: Text(
-                    _isArabic ? 'صحتك، أولويتنا' : 'Votre santé, notre priorité',
+                    LanguageService.isArabic ? 'صحتك، أولويتنا' : 'Votre santé, notre priorité',
                     style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.white,
@@ -232,12 +232,11 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildLanguageButton(String text, bool isArabicBtn) {
-    final isActive = (isArabicBtn && _isArabic) || (!isArabicBtn && !_isArabic);
+    final isActive = (isArabicBtn && LanguageService.isArabic) || (!isArabicBtn && !LanguageService.isArabic);
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _isArabic = isArabicBtn;
-        });
+      onTap: () async {
+        await LanguageService.setLanguage(isArabicBtn);
+        setState(() {});
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -282,7 +281,7 @@ class _LoginScreenState extends State<LoginScreen>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              _isArabic ? 'مرحباً بعودتك' : 'Bon retour !',
+              LanguageService.isArabic ? 'مرحباً بعودتك' : 'Bon retour !',
               style: const TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
@@ -293,7 +292,7 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              _isArabic ? 'سجّل دخولك إلى حسابك' : 'Connectez-vous à votre compte',
+              LanguageService.isArabic ? 'سجّل دخولك إلى حسابك' : 'Connectez-vous à votre compte',
               style: TextStyle(
                 fontSize: 14,
                 color: AppColors.textMedium,
@@ -327,7 +326,7 @@ class _LoginScreenState extends State<LoginScreen>
       keyboardType: TextInputType.phone,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       decoration: InputDecoration(
-        labelText: _isArabic ? 'رقم الهاتف' : 'Numéro de téléphone',
+        labelText: LanguageService.isArabic ? 'رقم الهاتف' : 'Numéro de téléphone',
         labelStyle: const TextStyle(color: AppColors.primary),
         prefixIcon: const Icon(Icons.phone, color: AppColors.primary),
         prefixText: '+235 ',
@@ -353,7 +352,7 @@ class _LoginScreenState extends State<LoginScreen>
       controller: _passwordController,
       obscureText: _obscurePassword,
       decoration: InputDecoration(
-        labelText: _isArabic ? 'كلمة المرور' : 'Mot de passe',
+        labelText: LanguageService.isArabic ? 'كلمة المرور' : 'Mot de passe',
         labelStyle: const TextStyle(color: AppColors.primary),
         prefixIcon: const Icon(Icons.lock, color: AppColors.primary),
         border: OutlineInputBorder(
@@ -392,7 +391,7 @@ class _LoginScreenState extends State<LoginScreen>
               activeColor: AppColors.primary,
             ),
             Text(
-              _isArabic ? 'تذكرني' : 'Se souvenir de moi',
+              LanguageService.isArabic ? 'تذكرني' : 'Se souvenir de moi',
               style: const TextStyle(fontSize: 14),
             ),
           ],
@@ -400,7 +399,7 @@ class _LoginScreenState extends State<LoginScreen>
         TextButton(
           onPressed: () {},
           child: Text(
-            _isArabic ? 'نسيت كلمة المرور؟' : 'Mot de passe oublié ?',
+            LanguageService.isArabic ? 'نسيت كلمة المرور؟' : 'Mot de passe oublié ?',
             style: const TextStyle(
               color: AppColors.primary,
               decoration: TextDecoration.underline,
@@ -445,7 +444,7 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                   )
                 : Text(
-                    _isArabic ? 'تسجيل الدخول' : 'SE CONNECTER',
+                    LanguageService.isArabic ? 'تسجيل الدخول' : 'SE CONNECTER',
                     style: const TextStyle(
                       color: AppColors.white,
                       fontSize: 16,
@@ -470,7 +469,7 @@ class _LoginScreenState extends State<LoginScreen>
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
-            _isArabic ? 'أو' : 'OU',
+            LanguageService.isArabic ? 'أو' : 'OU',
             style: TextStyle(color: AppColors.textMedium),
           ),
         ),
@@ -491,7 +490,7 @@ class _LoginScreenState extends State<LoginScreen>
           onPressed: _handleContinueWithoutAccount,
           icon: const Icon(Icons.person_off, color: AppColors.primary),
           label: Text(
-            _isArabic ? 'المتابعة بدون حساب' : 'Continuer sans compte',
+            LanguageService.isArabic ? 'المتابعة بدون حساب' : 'Continuer sans compte',
             style: const TextStyle(
               color: AppColors.primary,
               fontWeight: FontWeight.w500,
@@ -507,7 +506,7 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         const SizedBox(height: 8),
         Text(
-          _isArabic ? 'بياناتك تبقى على هاتفك' : 'Vos données restent sur votre téléphone',
+          LanguageService.isArabic ? 'بياناتك تبقى على هاتفك' : 'Vos données restent sur votre téléphone',
           style: TextStyle(
             fontSize: 11,
             color: AppColors.textMedium,
@@ -522,13 +521,13 @@ class _LoginScreenState extends State<LoginScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(_isArabic ? 'ليس لديك حساب؟ ' : 'Pas de compte ? '),
+        Text(LanguageService.isArabic ? 'ليس لديك حساب؟ ' : 'Pas de compte ? '),
         GestureDetector(
           onTap: () {
             Navigator.pushNamed(context, '/register');
           },
           child: Text(
-            _isArabic ? 'إنشاء حساب' : 'Créer un compte',
+            LanguageService.isArabic ? 'إنشاء حساب' : 'Créer un compte',
             style: const TextStyle(
               color: AppColors.primary,
               fontWeight: FontWeight.bold,
@@ -554,7 +553,7 @@ class _LoginScreenState extends State<LoginScreen>
           const Icon(Icons.wifi_off, color: AppColors.white, size: 16),
           const SizedBox(width: 8),
           Text(
-            _isArabic ? 'يعمل بدون اتصال بالإنترنت' : 'Fonctionne sans connexion internet',
+            LanguageService.isArabic ? 'يعمل بدون اتصال بالإنترنت' : 'Fonctionne sans connexion internet',
             style: const TextStyle(
               color: AppColors.white,
               fontSize: 12,

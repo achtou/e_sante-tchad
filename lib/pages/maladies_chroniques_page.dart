@@ -1,47 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
+import '../models/maladie_chronique_model.dart';
 import '../utils/colors.dart';
-
-class MaladieChronique {
-  final String id;
-  final String nom;
-  final String type; // 'diabete', 'hypertension', 'asthme', etc.
-  final String description;
-  final DateTime dateDiagnostic;
-  final List<MesureVitale> mesures;
-  final List<String> traitements;
-  final String medecinTraitant;
-  final String telephoneMedecin;
-
-  MaladieChronique({
-    required this.id,
-    required this.nom,
-    required this.type,
-    required this.description,
-    required this.dateDiagnostic,
-    required this.mesures,
-    required this.traitements,
-    required this.medecinTraitant,
-    required this.telephoneMedecin,
-  });
-}
-
-class MesureVitale {
-  final String id;
-  final DateTime date;
-  final String type; // 'glycemie', 'tension', 'poids', 'temperature'
-  final double valeur;
-  final String notes;
-
-  MesureVitale({
-    required this.id,
-    required this.date,
-    required this.type,
-    required this.valeur,
-    required this.notes,
-  });
-}
 
 class MaladiesChroniquesPage extends StatefulWidget {
   const MaladiesChroniquesPage({super.key});
